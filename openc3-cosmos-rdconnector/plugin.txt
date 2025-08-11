@@ -1,0 +1,8 @@
+VARIABLE ip 172.20.0.9
+VARIABLE port_tm 1234
+VARIABLE port_tc 1236
+VARIABLE rdconnector_target_name RDCONNECTOR
+
+TARGET RDCONNECTOR <%= rdconnector_target_name %>
+INTERFACE <%= rdconnector_target_name %>_INT udp_interface.rb <%= ip %> <%= port_tc %> <%= port_tm %> nil nil 128 nil nil
+  MAP_TARGET <%= rdconnector_target_name %>
