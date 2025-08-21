@@ -47,6 +47,7 @@ tlm_map = {
     "GET_TEMP": "get_temp",
     "GET_GYRO": "get_gyro",
     "GET_TM": "get_tm",
+    "MESSAGE": "send",
     "ERROR" : 0x4320
 }
 
@@ -55,11 +56,14 @@ def send_gs_tc_response(command, message):
     fmt = f'>h{len(message)}s'
     packed = struct.pack(fmt, id, message)
     sock_telemetry.sendto(packed, (TELEMETRY_IP, TELEMETRY_PORT))
-    print(f"Sending TC response: {message}")
+    print(f"Sending {command} response: {message}")
 
 
-def send_gs_serial_cmd(cmd):
-    ser_cmd = f"{tlm_map[cmd]}\r\n"
+def send_gs_serial_cmd(cmd, data=None):
+    if data is not None:
+        ser_cmd = f"{tlm_map[cmd]} {data}\r\n"
+    else:
+        ser_cmd = f"{tlm_map[cmd]}\r\n"
     ser.write(ser_cmd.encode())
 
 def recv_worker():
@@ -68,7 +72,6 @@ def recv_worker():
             data = ser.readline()
             if b"@;" in data:
                 apid = data.split(b"@;")[0].replace(b"\r\n", b"")
-                print(f"APID: {apid}")
                 data = data.split(b"@;")[1].replace(b"\r\n", b"")
                 if int(apid) == 201:
                     send_gs_tc_response("PING", f"PING:{data.decode()}".encode())
@@ -82,6 +85,8 @@ def recv_worker():
                     send_gs_tc_response("TM", data)
                 elif int(apid) == 100:
                     send_gs_tc_response("TM", data)
+                elif int(apid) == 1023:
+                    send_gs_tc_response("IDLE", data)
             time.sleep(0.1)
         except KeyboardInterrupt:
             ser.close()
@@ -98,11 +103,23 @@ while True:
     try:
         data, addr = sock_command.recvfrom(1024)
         try:
-            command = struct.unpack_from(">b", data)[0]
-            print(f"Command: {command}")
+            command = struct.unpack_from(">h", data)[0]            
             if(command == 0):
-                payload = struct.unpack_from(">f", data[1:])[0]
+                payload = struct.unpack_from(">f", data[2:])[0]
                 send_gs_tc_response("STATUS", f"STATUS:FREQ:OK:{payload}")
+            elif (command == 1):
+                send_gs_serial_cmd("STATUS")
+            elif (command == 2):
+                send_gs_serial_cmd("GET_TEMP")
+            elif (command == 3):
+                send_gs_serial_cmd("GET_GYRO")
+            elif (command == 4):
+                send_gs_serial_cmd("GET_TM")
+            elif (command == 5):
+                str_cmd = data.decode('utf-8')
+                send_gs_serial_cmd(str_cmd)
+            elif (command == 9):
+                send_gs_serial_cmd("PING")
             else:
                 str_cmd = data.decode('utf-8')
                 send_gs_serial_cmd(str_cmd)
