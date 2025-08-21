@@ -1,6 +1,6 @@
-VARIABLE ip 172.20.0.9
+VARIABLE ip 172.18.0.9
 VARIABLE port_tm 1234
-VARIABLE port_tc 1236
+VARIABLE port_tc 1235
 VARIABLE rdconnector_target_name RDCONNECTOR
 
 TARGET RDCONNECTOR <%= rdconnector_target_name %>
