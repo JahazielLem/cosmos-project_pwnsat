@@ -117,3 +117,22 @@ Warning: This is not recommended except for temporary testing on a local network
    2. On Windows: openc3.bat run
 3. After approximately 2 minutes, open a web browser to `https://<Your IP Address>:2900`
    1. If you run "docker ps", you can watch until the openc3-cosmos-init container completes, at which point the system should be fully configured and ready to use.
+
+
+
+# Build nad run connector
+```shell
+# manual building
+docker build -t connector .
+docker run --net=cosmos-project_pwnsat_default --name connector -p1234:1234/udp -p1235:1235 --rm connector
+#Compose
+docker compose up --build
+```
+
+# Generate plugin
+./openc3.sh cli generate plugin BYOS
+../openc3.sh cli generate target BYOS
+
+
+# Genera version
+../openc3.sh cli rake build VERSION=1.0.0 . 

@@ -7,6 +7,7 @@ import serial
 import struct
 import threading
 import time
+from  fileSender import FileSender
 
 SOFTWARE_VERSION = "0.0.2.0"
 BINARY_START_BYTE = 0x7E
@@ -30,6 +31,16 @@ sock_telemetry = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 #define APID_TM_SEND_TEMP 451    // Response <- APID_TC_GET_TEMP
 #define APID_TM_SEND_GYRO 452    // Response <- APID_TC_GET_GYRO
 #define APID_TM_SEND_TM 453      // Response <- APID_TC_GET_TM
+
+packet_chunck_count = 0
+
+FLAG_SEGMENT_CONT = 0
+FLAG_SEGMENT_START = 1
+FLAG_SEGMENT_END = 2
+
+def send_chunck_data(segment, length, chunck):
+    command = f"{BINARY_START_BYTE}{segment}{length}{packet_chunck_count}{chunck}\r\n"
+    ser.write(command.encode())
 
 tlm_ids = {
     "ERROR": 0x4320,
@@ -122,7 +133,10 @@ while True:
                 send_gs_serial_cmd("PING")
             else:
                 str_cmd = data.decode('utf-8')
-                send_gs_serial_cmd(str_cmd)
+                fileHandler = FileSender(str_cmd)
+                print(fileHandler.getChunckArray())
+                # send_chunck_data()
+                # send_gs_serial_cmd(str_cmd)
         except Exception as e:
             print(e)
     except KeyboardInterrupt:
