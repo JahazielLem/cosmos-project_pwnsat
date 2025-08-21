@@ -24,10 +24,10 @@ class FileSender:
       self.open_file.seek(offset)
       file_data = self.open_file.read(128)
       bytes_read += len(file_data)
-      offset += bytes_read
+      offset += len(file_data)
       chuncks.append({
         "data": file_data,
-        "len": bytes_read
+        "len": len(file_data)
       })
     return chuncks
 

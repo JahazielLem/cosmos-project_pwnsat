@@ -32,15 +32,15 @@ sock_telemetry = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 #define APID_TM_SEND_GYRO 452    // Response <- APID_TC_GET_GYRO
 #define APID_TM_SEND_TM 453      // Response <- APID_TC_GET_TM
 
-packet_chunck_count = 0
-
 FLAG_SEGMENT_CONT = 0
 FLAG_SEGMENT_START = 1
 FLAG_SEGMENT_END = 2
 
-def send_chunck_data(segment, length, chunck):
-    command = f"{BINARY_START_BYTE}{segment}{length}{packet_chunck_count}{chunck}\r\n"
-    ser.write(command.encode())
+def send_chunck_data(segment, packet_chunck, length, chunck):
+    pdu = BINARY_START_BYTE.to_bytes(1, 'little') + (length+2).to_bytes(1, 'little') + segment.to_bytes(1, 'little') + packet_chunck.to_bytes(1, 'little') + length.to_bytes(1, 'little')
+    command = pdu + chunck + b"\r\n"
+    print(f"[{len(command)}] Sending command: {length} - {command}")
+    ser.write(command)
 
 tlm_ids = {
     "ERROR": 0x4320,
@@ -81,6 +81,7 @@ def recv_worker():
     while True:
         try:
             data = ser.readline()
+            print(f"Recv: {data}")
             if b"@;" in data:
                 apid = data.split(b"@;")[0].replace(b"\r\n", b"")
                 data = data.split(b"@;")[1].replace(b"\r\n", b"")
@@ -114,7 +115,7 @@ while True:
     try:
         data, addr = sock_command.recvfrom(1024)
         try:
-            command = struct.unpack_from(">h", data)[0]            
+            command = struct.unpack_from(">h", data)[0]
             if(command == 0):
                 payload = struct.unpack_from(">f", data[2:])[0]
                 send_gs_tc_response("STATUS", f"STATUS:FREQ:OK:{payload}")
@@ -127,16 +128,27 @@ while True:
             elif (command == 4):
                 send_gs_serial_cmd("GET_TM")
             elif (command == 5):
-                str_cmd = data.decode('utf-8')
-                send_gs_serial_cmd(str_cmd)
+                str_cmd = data[2:].decode('utf-8')
+                print(str_cmd)
+                fileHandler = FileSender(str_cmd)
+                chuncks = fileHandler.getChunckArray()
+                print(f"Chuncks length: {len(chuncks)}")
+                for i in range(len(chuncks)):
+                    if i == 0:
+                        print("START")
+                        send_chunck_data(FLAG_SEGMENT_START, i, chuncks[i]["len"], chuncks[i]["data"])
+                    elif i == len(chuncks):
+                        print("END")
+                        send_chunck_data(FLAG_SEGMENT_END, i, chuncks[i]["len"], chuncks[i]["data"])
+                    else:
+                        send_chunck_data(FLAG_SEGMENT_CONT, i, chuncks[i]["len"], chuncks[i]["data"])
+                    time.sleep(4)
+                send_chunck_data(FLAG_SEGMENT_END, i, 1, b"1")
             elif (command == 9):
                 send_gs_serial_cmd("PING")
             else:
                 str_cmd = data.decode('utf-8')
-                fileHandler = FileSender(str_cmd)
-                print(fileHandler.getChunckArray())
-                # send_chunck_data()
-                # send_gs_serial_cmd(str_cmd)
+                send_gs_serial_cmd(str_cmd)
         except Exception as e:
             print(e)
     except KeyboardInterrupt:
