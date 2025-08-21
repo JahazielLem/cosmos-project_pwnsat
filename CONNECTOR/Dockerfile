@@ -7,5 +7,7 @@ WORKDIR /usr/src/app
 # Copy the current directory contents into the container at /usr/src/app
 COPY . .
 
+RUN pip install --no-cache-dir pyserial
+
 # Run the server when the container launches
 CMD ["python","-u", "./sat.py"]
