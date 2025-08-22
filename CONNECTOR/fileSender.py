@@ -22,7 +22,7 @@ class FileSender:
     chuncks = []
     while (offset < self.file_size):
       self.open_file.seek(offset)
-      file_data = self.open_file.read(128)
+      file_data = self.open_file.read(190)
       bytes_read += len(file_data)
       offset += len(file_data)
       chuncks.append({

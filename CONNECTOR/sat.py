@@ -39,7 +39,7 @@ FLAG_SEGMENT_END = 2
 def send_chunck_data(segment, packet_chunck, length, chunck):
     pdu = BINARY_START_BYTE.to_bytes(1, 'little') + (length+2).to_bytes(1, 'little') + segment.to_bytes(1, 'little') + packet_chunck.to_bytes(1, 'little') + length.to_bytes(1, 'little')
     command = pdu + chunck + b"\r\n"
-    print(f"[{len(command)}] Sending command: {length} - {command}")
+    print(f"[{packet_chunck}] Sending command: {command}")
     ser.write(command)
 
 tlm_ids = {
@@ -81,7 +81,6 @@ def recv_worker():
     while True:
         try:
             data = ser.readline()
-            print(f"Recv: {data}")
             if b"@;" in data:
                 apid = data.split(b"@;")[0].replace(b"\r\n", b"")
                 data = data.split(b"@;")[1].replace(b"\r\n", b"")
@@ -129,21 +128,18 @@ while True:
                 send_gs_serial_cmd("GET_TM")
             elif (command == 5):
                 str_cmd = data[2:].decode('utf-8')
-                print(str_cmd)
                 fileHandler = FileSender(str_cmd)
                 chuncks = fileHandler.getChunckArray()
-                print(f"Chuncks length: {len(chuncks)}")
-                for i in range(len(chuncks)):
-                    if i == 0:
-                        print("START")
-                        send_chunck_data(FLAG_SEGMENT_START, i, chuncks[i]["len"], chuncks[i]["data"])
-                    elif i == len(chuncks):
-                        print("END")
-                        send_chunck_data(FLAG_SEGMENT_END, i, chuncks[i]["len"], chuncks[i]["data"])
-                    else:
-                        send_chunck_data(FLAG_SEGMENT_CONT, i, chuncks[i]["len"], chuncks[i]["data"])
-                    time.sleep(4)
-                send_chunck_data(FLAG_SEGMENT_END, i, 1, b"1")
+                send_chunck_data(FLAG_SEGMENT_START, 0, len(str_cmd.encode()) + 3, str_cmd.encode())
+                time.sleep(3)
+                if len(chuncks) == 1:
+                    send_chunck_data(FLAG_SEGMENT_CONT, 1, chuncks[0]["len"] + 1, chuncks[0]["data"] + b"0")
+                    time.sleep(3)
+                else:
+                    for i in range(len(chuncks)):
+                        send_chunck_data(FLAG_SEGMENT_CONT, i, chuncks[i]["len"] + 1, chuncks[i]["data"] + b"0")
+                        time.sleep(3)
+                send_chunck_data(FLAG_SEGMENT_END, 0, 2, b"2561")
             elif (command == 9):
                 send_gs_serial_cmd("PING")
             else:
